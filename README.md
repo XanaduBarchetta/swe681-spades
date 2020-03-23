@@ -3,10 +3,12 @@ Final project for SWE681 - Four player spades
 
 Prereqs: OpenSSL. Python 3.8.
 
-From this directory, follow these instructions
-Run: `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365`
+From the project root directory, run the following command:
 
-Then:
-`python ./server.py`
+`openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365`
 
-Then go to `https://localhost:4443/`
+To run with standalone Flask webserver:
+
+`python -m flask run --cert=cert.pem --key=key.pem`
+
+Visit `https://localhost:5000` in your browser.
