@@ -11,4 +11,10 @@ To run with standalone Flask webserver:
 
 `python -m flask run --cert=cert.pem --key=key.pem`
 
+or try
+
+'./starter.ps1'
+
+if you have windows
+
 Visit `https://localhost:5000` in your browser.
