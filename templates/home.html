@@ -1,0 +1,18 @@
+<!doctype html>
+
+<title>Hello from Flask</title>
+{% if current_user.is_authenticated %}
+  <h1>Hello {{ name }}!</h1>
+{% else %}
+  <h1>Hello, World!</h1>
+{% endif %}
+
+
+<form method="post" action="/logout">
+    <input type="submit" value="Logout" name="Logout"/>
+</form>
+<!--
+{% if current_user.is_authenticated %}
+  Hi {{ current_user.name }}!
+{% endif %}
+-->
