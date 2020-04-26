@@ -33,6 +33,11 @@ NOTES:
 * DO NOT USE THE PASSWORD `password`! Pick a strong password and supply that to the command instead.
 * Change `localhost` where necessary if you are running MySQL remotely.
 
+Again with elevated privileges, from the same MySQL interface, set up the database tables:
+```mysql
+source /path/to/db_setup.sql
+```
+
 [TODO: include steps for generating secret key for sessions]
 
 Running the Game
