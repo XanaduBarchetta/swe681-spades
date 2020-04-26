@@ -29,7 +29,9 @@ CREATE DATABASE spades;
 CREATE USER 'spades_app'@'localhost' IDENTIFIED BY 'password';
 GRANT INSERT, SELECT, UPDATE ON spades.* TO 'spades_app'@'localhost';
 ```
-NOTE: DO NOT USE THE PASSWORD `password`! Pick a strong password and supply that to the command instead.
+NOTES:
+* DO NOT USE THE PASSWORD `password`! Pick a strong password and supply that to the command instead.
+* Change `localhost` where necessary if you are running MySQL remotely.
 
 [TODO: include steps for generating secret key for sessions]
 
