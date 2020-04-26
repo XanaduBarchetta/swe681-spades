@@ -15,11 +15,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 # config
-app.config.update(
-    DEBUG=True,
-    EXPLAIN_TEMPLATE_LOADING=True,
-    SECRET_KEY=b'_5#y2L"F4Q8z\n\xec]/'
-)
+app.config.from_envvar('SPADES_APP_CONFIG')
 
 
 @app.route('/', methods=["GET", "POST"])
