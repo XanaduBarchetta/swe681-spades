@@ -3,16 +3,25 @@
 <title>Hello from Flask</title>
 {% if current_user.is_authenticated %}
   <h1>Hello {{ name }}!</h1>
+  <form method="get" action="/viewstats">
+    <input type="submit" value="View Win/Loss Statistics" name="viewstats"/>
+  </form>
+  <form method="get" action="/viewgamemoves">
+    <input type="submit" value="View Game Moves History" name="viewgamemoves"/>
+  </form>
+  <form method="get" action="/startnewgame">
+    <input type="submit" value="Start New Game" name="startnewgame"/>
+  </form>
+  <form method="get" action="/joingame">
+    <input type="submit" value="Join Existing Game" name="joingame"/>
+  </form>
+  <form method="get" action="/logout">
+    <input type="submit" value="Logout" name="Logout"/>
+  </form>
 {% else %}
   <h1>Hello, World!</h1>
+  <p>Please login</p>
+  <form method="get" action="/">
+    <input type="submit" value="Login" name="login"/>
+  </form>
 {% endif %}
-
-
-<form method="post" action="/logout">
-    <input type="submit" value="Logout" name="Logout"/>
-</form>
-<!--
-{% if current_user.is_authenticated %}
-  Hi {{ current_user.name }}!
-{% endif %}
--->
