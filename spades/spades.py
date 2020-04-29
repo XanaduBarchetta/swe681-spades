@@ -1,21 +1,21 @@
 import re
 import os
 import logging
+
 from passlib.hash import sha256_crypt
-from flask import Flask, flash, redirect, url_for, request, render_template
-from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
+from flask import flash, redirect, url_for, request, render_template
+from flask_login import LoginManager, login_required, login_user, logout_user
+
+from spades.dbobjects import User
+from . import app
 
 
 retries = 0
-app = Flask(__name__)
 logger = logging.getLogger('spades')
-hdlr = logging.FileHandler('spades.log')
+hdlr = logging.FileHandler('../spades.log')
 logger.addHandler(hdlr)
 login_manager = LoginManager()
 login_manager.init_app(app)
-
-# config
-app.config.from_envvar('SPADES_APP_CONFIG')
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -48,7 +48,7 @@ def home(name=None):
 # callback to reload the user object
 @login_manager.user_loader
 def load_user(userid):
-    return User(userid)
+    return User.query.get(userid)
 
 
 # handle login failed
@@ -106,11 +106,11 @@ def __getUsers():
     users = { }
 
     # TODO Don't use hashmaps as we'll need to have username info like name
-    if os.path.exists("database.txt"):
+    if os.path.exists("../database.txt"):
         append_write = 'r' # append if already exists
     else:
         return None
-    with open("database.txt", append_write) as f:
+    with open("../database.txt", append_write) as f:
         for line in f:
             (key, val) = line.split()
             users[key] = val
@@ -127,20 +127,9 @@ def __registerUser(username, password):
 
     # TODO Point to database instead of a text file
     # TODO Also store name
-    if os.path.exists("database.txt"):
+    if os.path.exists("../database.txt"):
         append_write = 'a' # append if already exists
     else:
         append_write = 'w' # make a new file if not
-    with open("database.txt", append_write) as file:
+    with open("../database.txt", append_write) as file:
         file.write(username + " " + hashedPassword + "\n")
-
-
-# silly user model
-class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
-        self.name = "user" + str(id)
-        self.password = self.name + "_secret"
-
-    def __repr__(self):
-        return "%d/%s/%s" % (self.id, self.name, self.password)
