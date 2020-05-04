@@ -2,7 +2,7 @@ import re
 import os
 import logging
 
-from passlib.hash import sha256_crypt
+import bcrypt
 from flask import flash, redirect, url_for, request, render_template
 from flask_login import LoginManager, login_required, login_user, logout_user
 
@@ -26,7 +26,7 @@ def login():
         password = request.form['password']
 
         if (__validate_input(username) and __verifyUser(username, password)):
-            user = User(3)
+            user = User()
             user.name = username
             login_user(user)
             return redirect(url_for('home', name=user.name))
@@ -97,7 +97,9 @@ def __validate_input(input):
 def __verifyUser(username, password):
     users = __getUsers()
     if (username in users):
-        return sha256_crypt.verify(password, users[username])
+        bpassword = password.encode('utf-8')
+        bUserPassword = users[username].encode('utf-8')
+        return bcrypt.checkpw(bpassword, bUserPassword)
     else:
         return False
 
@@ -106,12 +108,12 @@ def __getUsers():
     users = { }
 
     # TODO Don't use hashmaps as we'll need to have username info like name
-    if os.path.exists("../database.txt"):
+    if os.path.exists("./database.txt"):
         append_write = 'r' # append if already exists
     else:
         logger.error("Database file not found")
         return None
-    with open("../database.txt", append_write) as f:
+    with open("./database.txt", append_write) as f:
         for line in f:
             (key, val) = line.split()
             users[key] = val
@@ -120,17 +122,20 @@ def __getUsers():
 
 def __verifyExistingUser(username):
     users = __getUsers()
+    if users is None:
+        return True
     return username not in users
 
 
 def __registerUser(username, password):
-    hashedPassword = sha256_crypt.encrypt(password)
+    bpassword = password.encode('utf-8')
+    hashedPassword = bcrypt.hashpw(bpassword, bcrypt.gensalt())
 
     # TODO Point to database instead of a text file
     # TODO Also store name
-    if os.path.exists("../database.txt"):
+    if os.path.exists("./database.txt"):
         append_write = 'a' # append if already exists
     else:
         append_write = 'w' # make a new file if not
-    with open("../database.txt", append_write) as file:
-        file.write(username + " " + hashedPassword + "\n")
+    with open("./database.txt", append_write) as file:
+        file.write(username + " " + hashedPassword.decode("utf-8") + "\n")
