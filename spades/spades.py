@@ -12,7 +12,7 @@ from . import app
 
 retries = 0
 logger = logging.getLogger('spades')
-hdlr = logging.FileHandler('../spades.log')
+hdlr = logging.FileHandler(app.config['LOGFILE'])
 logger.addHandler(hdlr)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -109,6 +109,7 @@ def __getUsers():
     if os.path.exists("../database.txt"):
         append_write = 'r' # append if already exists
     else:
+        logger.error("Database file not found")
         return None
     with open("../database.txt", append_write) as f:
         for line in f:
