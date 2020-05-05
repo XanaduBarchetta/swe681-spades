@@ -4,10 +4,11 @@ import logging
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from . import app
-
+from .exceptions import UserAlreadyExistsException
 
 logger = logging.getLogger('spades_db')
 hdlr = logging.FileHandler('../spades_db.log')
@@ -73,10 +74,13 @@ class User(db.Model, UserMixin):
             username=username,
             password=hashed_pw
         )
-        # TODO: try/except block for user already exists
-        db.session.add(new_user)
-        db.session.commit()
-        return new_user
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+        except IntegrityError:
+            raise UserAlreadyExistsException()
+        else:
+            return new_user
 
 
 class GameStateEnum(enum.Enum):
