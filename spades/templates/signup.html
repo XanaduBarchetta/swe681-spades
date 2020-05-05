@@ -1,14 +1,22 @@
-<form method="POST">
-    Username: <input name="username"><br>
-    Password: <input name="password" type="password"><br>
-    <input type="submit">
-</form>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
+<html>
+    <head>
+        <title>Spades - Signup</title>
+    </head>
+    <body>
+    <h1>Spades Signup</h1>
+    <form method="POST">
+        Username: <input name="username"><br>
+        Password: <input name="password" type="password"><br>
+        <input type="submit">
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class=flashes>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    </body>
+</html>

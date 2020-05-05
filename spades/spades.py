@@ -1,14 +1,15 @@
 import re
-import os
 import logging
 
-from passlib.hash import sha256_crypt
 from flask import flash, redirect, url_for, request, render_template
 from flask_login import LoginManager, login_required, login_user, logout_user
 
 from spades.dbobjects import User
+from spades.exceptions import UserAlreadyExistsException
 from . import app
 
+USERNAME_REGEX = re.compile(r'^\w+$')
+PASSWORD_REGEX = re.compile(r'^[-=+!@#$%^&*()\w]+$')
 
 retries = 0
 logger = logging.getLogger('spades')
@@ -20,27 +21,48 @@ login_manager.init_app(app)
 
 @app.route('/', methods=["GET", "POST"])
 def login():
-    global retries
     if request.method == 'POST':
-        username = request.form['username'].lower()
-        password = request.form['password']
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-        if (__validate_input(username) and __verifyUser(username, password)):
-            user = User(3)
+        # Validate input
+        failed_validation = False
+        if not isinstance(username, str) or not isinstance(password, str) or len(username) < 1 or len(password) < 1:
+            flash('You must provide both a username and password.')
+            failed_validation = True
+        if len(username) > 32:
+            flash("Usernames can not be longer than 32 characters.")
+            failed_validation = True
+        if not USERNAME_REGEX.match(username):
+            flash("Usernames may only contain letters, numbers, and underscore.")
+            failed_validation = True
+        if len(password) < app.config['MIN_PASSWORD_LENGTH'] or len(password) > app.config['MAX_PASSWORD_LENGTH']:
+            flash("Passwords are no fewer than {min} and no greater than {max} characters.".format(
+                min=app.config['MIN_PASSWORD_LENGTH'],
+                max=app.config['MAX_PASSWORD_LENGTH']
+            ))
+            failed_validation = True
+        if not PASSWORD_REGEX.match(password):
+            flash("Passwords are limited to letters, numbers, and the following characters: -=+!@#$%^&*()_")
+            failed_validation = True
+        if failed_validation:
+            return redirect(url_for('login'))
+
+        user = User.get_user(username, password)
+        if user is None:
+            flash('The provided credentials do not match any registered user.')
+            return redirect(url_for('login'))
+        else:
             user.name = username
             login_user(user)
             return redirect(url_for('home', name=user.name))
-        else:
-            flash('Invalid credentials')
-            logger.error('Invalid credentials for user' + username)
-            retries = retries + 1
-            return redirect(url_for('login'))
     else:
         return render_template('login.html')
 
 
 @app.route('/home')
 @app.route('/home/<name>')
+@login_required
 def home(name=None):
     return render_template('home.html', name=name)
 
@@ -69,68 +91,39 @@ def logout():
 def signup():
     logger.info(request.method)
     if request.method == 'POST':
-        username = request.form['username'].lower()
-        password = request.form['password']
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-        if (__validate_input(username) == False):
-            flash("Username is invalid")
+        # Validate input
+        failed_validation = False
+        if not isinstance(username, str) or not isinstance(password, str) or len(username) < 1 or len(password) < 1:
+            flash('You must provide both a username and password.')
+            failed_validation = True
+        if len(username) > 32:
+            flash("Usernames can not be longer than 32 characters.")
+            failed_validation = True
+        if not USERNAME_REGEX.match(username):
+            flash("Usernames may only contain letters, numbers, and underscore.")
+            failed_validation = True
+        if len(password) < app.config['MIN_PASSWORD_LENGTH'] or len(password) > app.config['MAX_PASSWORD_LENGTH']:
+            flash("Passwords must be no fewer than {min} and no greater than {max} characters.".format(
+                min=app.config['MIN_PASSWORD_LENGTH'],
+                max=app.config['MAX_PASSWORD_LENGTH']
+            ))
+            failed_validation = True
+        if not PASSWORD_REGEX.match(password):
+            flash("Passwords are limited to letters, numbers, and the following characters: -=+!@#$%^&*()_")
+            failed_validation = True
+        if failed_validation:
             return redirect(url_for('signup'))
-        if (__verifyExistingUser(username) == False):
-            flash("User already exists.")
+
+        try:
+            User.create_user(username, password)
+        except UserAlreadyExistsException:
+            flash("Username already exists. Please choose a different username.")
             return redirect(url_for('signup'))
-        __registerUser(username, password)
-        return redirect(url_for('login'))
+        else:
+            flash("You may now login with your new username and password.")
+            return redirect(url_for('login'))
     elif request.method == 'GET':
         return render_template("signup.html")
-
-
-def __validate_input(input):
-    if (len(input) < 5 or len(input) > 40):
-        logger.error('Input length is incorrect for: ' + input)
-        return False
-    if re.match('^[A-Za-z0-9]+$', input) is None:
-        logger.error('Regex failed for: ' + input)
-        return False
-    return True
-
-
-def __verifyUser(username, password):
-    users = __getUsers()
-    if (username in users):
-        return sha256_crypt.verify(password, users[username])
-    else:
-        return False
-
-
-def __getUsers():
-    users = { }
-
-    # TODO Don't use hashmaps as we'll need to have username info like name
-    if os.path.exists("../database.txt"):
-        append_write = 'r' # append if already exists
-    else:
-        logger.error("Database file not found")
-        return None
-    with open("../database.txt", append_write) as f:
-        for line in f:
-            (key, val) = line.split()
-            users[key] = val
-    return users
-
-
-def __verifyExistingUser(username):
-    users = __getUsers()
-    return username not in users
-
-
-def __registerUser(username, password):
-    hashedPassword = sha256_crypt.encrypt(password)
-
-    # TODO Point to database instead of a text file
-    # TODO Also store name
-    if os.path.exists("../database.txt"):
-        append_write = 'a' # append if already exists
-    else:
-        append_write = 'w' # make a new file if not
-    with open("../database.txt", append_write) as file:
-        file.write(username + " " + hashedPassword + "\n")
