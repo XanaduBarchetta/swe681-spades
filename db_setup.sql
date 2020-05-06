@@ -6,7 +6,7 @@ CREATE TABLE User
 (
     user_id INT AUTO_INCREMENT NOT NULL,
     username VARCHAR(32) NOT NULL,
-    password CHAR(64) NOT NULL,
+    password BINARY(60) NOT NULL,
     wins INT DEFAULT 0 NOT NULL,
     losses INT DEFAULT 0 NOT NULL,
     CONSTRAINT User_pk

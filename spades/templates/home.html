@@ -1,6 +1,9 @@
 <!doctype html>
-
-<title>Hello from Flask</title>
+<html>
+<head>
+<title>Spades Home</title>
+</head>
+<body>
 {% if current_user.is_authenticated %}
   <h1>Hello {{ name }}!</h1>
   <form method="get" action="/viewstats">
@@ -25,3 +28,5 @@
     <input type="submit" value="Login" name="login"/>
   </form>
 {% endif %}
+</body>
+</html>
