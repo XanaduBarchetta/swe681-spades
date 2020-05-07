@@ -2,9 +2,9 @@ import re
 import logging
 
 from flask import flash, redirect, url_for, request, render_template
-from flask_login import LoginManager, login_required, login_user, logout_user
+from flask_login import current_user, LoginManager, login_required, login_user, logout_user
 
-from spades.dbobjects import User
+from spades.dbobjects import User, Game
 from spades.exceptions import UserAlreadyExistsException
 from . import app
 
@@ -61,10 +61,13 @@ def login():
 
 
 @app.route('/home')
-@app.route('/home/<name>')
 @login_required
-def home(name=None):
-    return render_template('home.html', name=name)
+def home():
+    data = {
+        'name': current_user.username,
+        'user_is_in_game': current_user.get_active_game() is not None
+    }
+    return render_template('home.html', **data)
 
 
 # callback to reload the user object
@@ -127,3 +130,12 @@ def signup():
             return redirect(url_for('login'))
     elif request.method == 'GET':
         return render_template("signup.html")
+
+
+@app.route('/joingame', methods=['GET'])
+@login_required
+def join_game():
+    if current_user.get_active_game() is None:
+        # Join a new/filling game
+        Game.join_game(current_user.user_id)
+    return redirect(url_for('game'))
