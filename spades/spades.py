@@ -51,7 +51,7 @@ def login():
         else:
             user.name = username
             login_user(user)
-            return redirect(url_for('home', name=user.name))
+            return redirect(url_for('home'))
     else:
         return render_template('login.html')
 

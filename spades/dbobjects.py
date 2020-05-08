@@ -5,7 +5,7 @@ from datetime import datetime
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
@@ -161,7 +161,6 @@ class Game(db.Model):
                 db.session.commit()
             elif game.player_west is None:
                 game.player_west = user_id
-                db.session.commit()
 
                 # Start the game
                 game.state = GameStateEnum.IN_PROGRESS
@@ -173,6 +172,7 @@ class Game(db.Model):
                     dealer=DirectionsEnum.NORTH
                 )
                 db.session.add(hand)
+                db.session.flush()  # Required so that HardCard inserts can reference the hand_number
 
                 hand.deal_cards(game)
                 game.last_activity = datetime.utcnow()
@@ -242,19 +242,18 @@ class Hand(db.Model):
             ))
 
         # Initialize first Trick
-        lead_player = game.player_north
+        lead_player = DirectionsEnum.NORTH
         if self.dealer == DirectionsEnum.NORTH:
-            lead_player = game.player_east
+            lead_player = DirectionsEnum.EAST
         elif self.dealer == DirectionsEnum.EAST:
-            lead_player = game.player_south
+            lead_player = DirectionsEnum.SOUTH
         elif self.dealer == DirectionsEnum.SOUTH:
-            lead_player = game.player_west
+            lead_player = DirectionsEnum.WEST
         db.session.add(Trick(
             game_id=game.game_id,
             hand_number=self.hand_number,
             trick_number=1,
             lead_player=lead_player,
-            last_play=datetime.utcnow()  # There was no previous play, but we need a reference point for timing out
         ))
 
 
