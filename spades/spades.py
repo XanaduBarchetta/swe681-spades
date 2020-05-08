@@ -36,12 +36,8 @@ def login():
         if not USERNAME_REGEX.match(username):
             flash("Usernames may only contain letters, numbers, and underscore.")
             failed_validation = True
-        if len(password) < app.config['MIN_PASSWORD_LENGTH'] or len(password) > app.config['MAX_PASSWORD_LENGTH']:
-            flash("Passwords are no fewer than {min} and no greater than {max} characters.".format(
-                min=app.config['MIN_PASSWORD_LENGTH'],
-                max=app.config['MAX_PASSWORD_LENGTH']
-            ))
-            failed_validation = True
+        # Don't check password length here in case requirements have changed.
+        # We don't want to lock out legacy users!
         if not PASSWORD_REGEX.match(password):
             flash("Passwords are limited to letters, numbers, and the following characters: -=+!@#$%^&*()_")
             failed_validation = True

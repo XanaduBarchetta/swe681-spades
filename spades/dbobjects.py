@@ -126,7 +126,7 @@ class Game(db.Model):
     player_south = db.Column(db.Integer, db.ForeignKey('User.user_id'))
     player_east = db.Column(db.Integer, db.ForeignKey('User.user_id'))
     player_west = db.Column(db.Integer, db.ForeignKey('User.user_id'))
-    create_date = db.Column(db.DateTime)
+    last_activity = db.Column(db.DateTime)
     state = db.Column(db.Enum(GameStateEnum), default='FILLING')
     ns_win = db.Column(db.Boolean)
 
@@ -145,7 +145,7 @@ class Game(db.Model):
             # Create a new game
             game = Game(
                 player_north=user_id,
-                create_date=datetime.utcnow()
+                last_activity=datetime.utcnow()
             )
             db.session.add(game)
             db.session.commit()
@@ -153,9 +153,11 @@ class Game(db.Model):
             # Join the user to the existing game
             if game.player_south is None:
                 game.player_south = user_id
+                game.last_activity = datetime.utcnow()
                 db.session.commit()
             elif game.player_east is None:
                 game.player_east = user_id
+                game.last_activity = datetime.utcnow()
                 db.session.commit()
             elif game.player_west is None:
                 game.player_west = user_id
@@ -173,6 +175,7 @@ class Game(db.Model):
                 db.session.add(hand)
 
                 hand.deal_cards(game)
+                game.last_activity = datetime.utcnow()
                 db.session.commit()
 
 
@@ -283,7 +286,6 @@ class Trick(db.Model):
     east_play = db.Column(db.String)
     west_play = db.Column(db.String)
     winner = db.Column(db.Enum(DirectionsEnum))
-    last_play = db.Column(db.DateTime)
 
     __table_args__ = (
         # Enforce composite Foreign Key
