@@ -4,29 +4,26 @@
 <title>Spades Home</title>
 </head>
 <body>
-{% if current_user.is_authenticated %}
   <h1>Hello {{ name }}!</h1>
+  {% if user_is_in_game %}
+  <p>You are in an ongoing game. Click "Join New/Existing Game" below to return to your game.</p>
+  {% else %}
+  <p>You are not currently in a game. Click "Join New/Existing Game" to start a new one!</p>
+  {% endif %}
   <form method="get" action="/viewstats">
     <input type="submit" value="View Win/Loss Statistics" name="viewstats"/>
   </form>
+  <br>
   <form method="get" action="/viewgamemoves">
     <input type="submit" value="View Game Moves History" name="viewgamemoves"/>
   </form>
-  <form method="get" action="/startnewgame">
-    <input type="submit" value="Start New Game" name="startnewgame"/>
-  </form>
+  <br>
   <form method="get" action="/joingame">
-    <input type="submit" value="Join Existing Game" name="joingame"/>
+    <input type="submit" value="Join New/Existing Game" name="joingame"/>
   </form>
+  <br>
   <form method="get" action="/logout">
     <input type="submit" value="Logout" name="Logout"/>
   </form>
-{% else %}
-  <h1>Hello, World!</h1>
-  <p>Please login</p>
-  <form method="get" action="/">
-    <input type="submit" value="Login" name="login"/>
-  </form>
-{% endif %}
 </body>
 </html>

@@ -22,7 +22,7 @@ CREATE TABLE Game
     player_south INT DEFAULT NULL,
     player_east INT DEFAULT NULL,
     player_west INT DEFAULT NULL,
-    create_date DATETIME NOT NULL,
+    last_activity DATETIME NOT NULL,
     state ENUM('FILLING','IN_PROGRESS','ABANDONED','FORFEITED','COMPLETED') NOT NULL DEFAULT 'FILLING',
     ns_win TINYINT(1) DEFAULT NULL,
     CONSTRAINT Game_pk
@@ -41,10 +41,11 @@ CREATE TABLE Game
             ON UPDATE CASCADE ON DELETE SET NULL
 );
 -- Each record in the Game table is a single instance of a game of spades
--- create_date represents time at which record was created, not the start of the first hand
+-- last_activity represents last time at which game had an update
+--    updates include player joining game, card being played, and game changing state
 -- 'ABANDONED' state denotes a game which never filled all four player slots
 -- 'FORFEITED' state denotes a game in which some player timed out on their turn
--- Games in the 'FILLING' state should time out some amount of time relative to the create_date
+-- Games in the 'FILLING' state should time out some amount of time relative to last_activity
 -- Who won? When state is 'FORFEITED' or 'COMPLETED', check ns_win value to see if North/South team won.
 --          If ns_win=True, then North/South team won. If ns_win=False, then East/West team won.
 -- There are no ties/draws. The only end state without a win or loss is 'ABANDONED' which does not count towards total games played for a player.
@@ -79,7 +80,7 @@ CREATE TABLE HandCard
     game_id INT NOT NULL,
     hand_number INT NOT NULL,
     user_id INT NOT NULL,
-    card CHAR(2) NOT NULL,
+    card CHAR(3) NOT NULL,
     played TINYINT(1) NOT NULL DEFAULT FALSE,
     CONSTRAINT HandCard_pk
         PRIMARY KEY (game_id, hand_number, user_id, card),
@@ -95,12 +96,11 @@ CREATE TABLE Trick
     hand_number INT NOT NULL,
     trick_number INT NOT NULL,
     lead_player ENUM('NORTH','SOUTH','EAST','WEST') NOT NULL,
-    north_play CHAR(2) DEFAULT NULL,
-    south_play CHAR(2) DEFAULT NULL,
-    east_play CHAR(2) DEFAULT NULL,
-    west_play CHAR(2) DEFAULT NULL,
+    north_play CHAR(3) DEFAULT NULL,
+    south_play CHAR(3) DEFAULT NULL,
+    east_play CHAR(3) DEFAULT NULL,
+    west_play CHAR(3) DEFAULT NULL,
     winner ENUM('NORTH','SOUTH','EAST','WEST') DEFAULT NULL,
-    last_play DATETIME DEFAULT NULL,
     CONSTRAINT Trick_pk
         PRIMARY KEY (game_id, hand_number, trick_number),
     CONSTRAINT Trick_Hand_fk
@@ -108,4 +108,3 @@ CREATE TABLE Trick
 );
 -- trick_number works just like hand_number from Hand description
 -- lead_player is 1 clockwise of Hand.dealer for trick_number==1
--- Use last_play along with cron job to determine timeouts and forfeits.
