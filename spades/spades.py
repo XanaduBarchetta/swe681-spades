@@ -18,7 +18,10 @@ logger.addHandler(hdlr)
 
 security = logging.getLogger('audit')
 security.setLevel(logging.INFO)
+security_formatter = logging.Formatter(
+        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 shdlr = logging.FileHandler(app.config['AUDITLOGFILE'])
+shdlr.setFormatter(security_formatter)
 security.addHandler(shdlr)
 
 login_manager = LoginManager()
@@ -90,6 +93,7 @@ def load_user(userid):
 # handle login failed
 @app.errorhandler(401)
 def page_not_found(e):
+    security.info("Page not found reached. Error: %s", e)
     return render_template('error.html'), 401
 
 
