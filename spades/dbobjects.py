@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from . import app
-from .exceptions import UserAlreadyExistsException
+from .exceptions import UserAlreadyExistsException, InvalidDirectionError, UserCanNotBidError, BadGameStateError
 from .utils import get_shuffled_deck
 
 logger = logging.getLogger('spades_db')
@@ -109,6 +109,18 @@ class User(db.Model, UserMixin):
         else:
             return new_user
 
+    @staticmethod
+    def get_username_by_id(user_id: int):
+        """
+        :param user_id: The user_id on which to search
+        :return: The username of the matching user, or None if no users match
+        """
+        if user_id is None:
+            return None
+        return db.session.query(User.username).filter(
+            User.user_id == user_id
+        ).scalar()
+
 
 class GameStateEnum(enum.Enum):
     FILLING = 'FILLING'
@@ -129,6 +141,47 @@ class Game(db.Model):
     last_activity = db.Column(db.DateTime)
     state = db.Column(db.Enum(GameStateEnum), default='FILLING')
     ns_win = db.Column(db.Boolean)
+
+    def player_is_direction(self, user_id: int, direction: 'DirectionsEnum'):
+        """
+        :param user_id: The user_id to check
+        :param direction: The direction to check
+        :return: True if the provided user_id matched the provided direction, False otherwise
+        """
+        if direction == DirectionsEnum.NORTH and self.player_north == user_id:
+            return True
+        if direction == DirectionsEnum.SOUTH and self.player_south == user_id:
+            return True
+        if direction == DirectionsEnum.EAST and self.player_east == user_id:
+            return True
+        if direction == DirectionsEnum.WEST and self.player_west == user_id:
+            return True
+        return False
+
+    def get_latest_hand(self):
+        """
+        :return: The most recent Hand for this game, or None if this game has no hands yet
+        """
+        hand_number = db.session.query(
+            func.max(Hand.hand_number)
+        ).filter(
+            Hand.game_id == self.game_id
+        ).scalar()
+        if hand_number is None:
+            return None
+        else:
+            return db.session.query(Hand).filter(
+                Hand.game_id == self.game_id,
+                Hand.hand_number == hand_number
+            ).one()
+
+    def can_user_place_bid(self, user_id: int, hand: 'Hand'):
+        next_dir = hand.get_next_required_bid_direction()
+        if next_dir is None:
+            return False
+        if self.player_is_direction(user_id, next_dir):
+            return True
+        return False
 
     @staticmethod
     def join_game(user_id: int):
@@ -185,6 +238,30 @@ class DirectionsEnum(enum.Enum):
     EAST = 'EAST'
     WEST = 'WEST'
 
+    @classmethod
+    def get_next_clockwise(cls, direction: 'DirectionsEnum'):
+        if direction == cls.NORTH:
+            return cls.EAST
+        if direction == cls.EAST:
+            return cls.SOUTH
+        if direction == cls.SOUTH:
+            return cls.WEST
+        if direction == cls.WEST:
+            return cls.NORTH
+        raise InvalidDirectionError(f'Received invalid direction [{direction}]')
+
+    @classmethod
+    def get_partner_direction(cls, direction: 'DirectionsEnum'):
+        if direction == cls.NORTH:
+            return cls.SOUTH
+        if direction == cls.SOUTH:
+            return cls.NORTH
+        if direction == cls.EAST:
+            return cls.WEST
+        if direction == cls.WEST:
+            return cls.EAST
+        raise InvalidDirectionError(f'Received invalid direction [{direction}]')
+
 
 class Hand(db.Model):
     __tablename__ = 'Hand'
@@ -201,6 +278,74 @@ class Hand(db.Model):
     ew_bags_at_end = db.Column(db.Integer)
     ns_score_after_bags = db.Column(db.Integer)
     ew_score_after_bags = db.Column(db.Integer)
+
+    def get_lastest_trick(self):
+        """
+        :return: The most recent Trick for this Hand, or None if this Hand has no Tricks yet
+        """
+        trick_number = db.session.query(
+            func.max(Trick.trick_number)
+        ).filter(
+            Trick.game_id == self.game_id,
+            Trick.hand_number == self.hand_number
+        ).scalar()
+        if trick_number is None:
+            return None
+        else:
+            return db.session.query(Trick).filter(
+                Trick.game_id == self.game_id,
+                Trick.hand_number == self.hand_number,
+                Trick.trick_number == trick_number
+            ).one()
+
+    def get_playable_cards_for_user(self, user_id: int):
+        return db.session.query(HandCard).filter(
+            HandCard.game_id == self.game_id,
+            HandCard.hand_number == self.hand_number,
+            HandCard.user_id == user_id,
+            HandCard.played.is_(False)
+        ).all()
+
+    def get_next_required_bid_direction(self):
+        """
+        :return: The direction of the next required bidder, or None if all bids have been placed for this hand
+        """
+        if self.north_bid is not None and self.east_bid is None:
+            return DirectionsEnum.EAST
+        if self.east_bid is not None and self.south_bid is None:
+            return DirectionsEnum.SOUTH
+        if self.south_bid is not None and self.west_bid is None:
+            return DirectionsEnum.WEST
+        if self.west_bid is not None and self.north_bid is None:
+            return DirectionsEnum.NORTH
+        # If we made it this far, either all bids have been placed or no bids have been placed
+        if self.north_bid is None:
+            # No bids have been made yet
+            return DirectionsEnum.get_next_clockwise(self.dealer)
+        # All bids have been made
+        return None
+
+    def place_bid(self, user_id: int, bid: int, game: Game):
+        if not game.can_user_place_bid(user_id, self):
+            raise UserCanNotBidError()
+        bid_direction = self.get_next_required_bid_direction()
+        if bid_direction == DirectionsEnum.NORTH:
+            self.north_bid = bid
+        elif bid_direction == DirectionsEnum.EAST:
+            self.east_bid = bid
+        elif bid_direction == DirectionsEnum.SOUTH:
+            self.south_bid = bid
+        elif bid_direction == DirectionsEnum.WEST:
+            self.west_bid = bid
+        else:
+            # Shouldn't arrive at this state, log error and raise exception
+            logger.error('Bad game state found while user [{user_id}] bid on game [{game_id}].'.format(
+                user_id=user_id,
+                game_id=game.game_id
+            ))
+            raise BadGameStateError()
+        game.last_activity = datetime.utcnow()
+        db.session.commit()
 
     def deal_cards(self, game: Game):
         """
@@ -242,18 +387,11 @@ class Hand(db.Model):
             ))
 
         # Initialize first Trick
-        lead_player = DirectionsEnum.NORTH
-        if self.dealer == DirectionsEnum.NORTH:
-            lead_player = DirectionsEnum.EAST
-        elif self.dealer == DirectionsEnum.EAST:
-            lead_player = DirectionsEnum.SOUTH
-        elif self.dealer == DirectionsEnum.SOUTH:
-            lead_player = DirectionsEnum.WEST
         db.session.add(Trick(
             game_id=game.game_id,
             hand_number=self.hand_number,
             trick_number=1,
-            lead_player=lead_player,
+            lead_player=DirectionsEnum.get_next_clockwise(self.dealer),
         ))
 
 
