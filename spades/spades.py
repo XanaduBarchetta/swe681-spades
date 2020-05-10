@@ -265,7 +265,7 @@ def game_bid():
         return redirect(url_for('game_home'))
     bid = bid.strip()
     if not BID_REGEX.match(bid):
-        flash('You bid must be an integer bid from zero (0) to thirteen (13).')
+        flash('Your bid must be an integer bid from zero (0) to thirteen (13).')
         return redirect(url_for('game_home'))
 
     if game is None:

@@ -63,7 +63,7 @@ class User(db.Model, UserMixin):
             return None
         except MultipleResultsFound:
             # This should be impossible, since user can only be in one game at a time, but catching just in case
-            logger.error("Database in unexpected state. User [{}] in two active games at once.".format(self.username))
+            logger.error("Database in unexpected state. User [%s] in two active games at once.", self.username)
             return None
         else:
             return game
@@ -83,7 +83,7 @@ class User(db.Model, UserMixin):
             return None
         except MultipleResultsFound:
             # This should be impossible, since `username` column has Unique Index, but catching just in case
-            logger.error("Database in unexpected state. Two results found for username [{}]".format(username))
+            logger.error("Database in unexpected state. Two results found for username [%s]", username)
             return None
         else:
             # Check password
@@ -326,23 +326,33 @@ class Hand(db.Model):
         return None
 
     def place_bid(self, user_id: int, bid: int, game: Game):
+        """
+        Pace a bid for a given user
+        :param user_id: The user attempting to bid
+        :param bid: The bid the user is attempting to make
+        :param game: The Game object (for convenience)
+        :return: None
+        :raise: UserCanNotBidError if it is not the user's turn to bid for the specified game
+        :raise: BadGameStateError if the user is expected to be able to bid but no bid directions are acceptable
+        """
         if not game.can_user_place_bid(user_id, self):
             raise UserCanNotBidError()
         bid_direction = self.get_next_required_bid_direction()
-        if bid_direction == DirectionsEnum.NORTH:
+        # Locking objects for updating at the sqlalchemy layer is tricky here,
+        # so check the value of self.{direction}_bid even in the if statements
+        if bid_direction == DirectionsEnum.NORTH and self.north_bid is None:
             self.north_bid = bid
-        elif bid_direction == DirectionsEnum.EAST:
+        elif bid_direction == DirectionsEnum.EAST and self.east_bid is None:
             self.east_bid = bid
-        elif bid_direction == DirectionsEnum.SOUTH:
+        elif bid_direction == DirectionsEnum.SOUTH and self.south_bid is None:
             self.south_bid = bid
-        elif bid_direction == DirectionsEnum.WEST:
+        elif bid_direction == DirectionsEnum.WEST and self.west_bid is None:
             self.west_bid = bid
         else:
             # Shouldn't arrive at this state, log error and raise exception
-            logger.error('Bad game state found while user [{user_id}] bid on game [{game_id}].'.format(
-                user_id=user_id,
-                game_id=game.game_id
-            ))
+            # NOTE: possible to arrive at this state if two competing bids from same player are placed
+            #       extremely close together.
+            logger.error('Bad game state found while user [%s] bid on game [%s].', user_id, game.game_id)
             raise BadGameStateError()
         game.last_activity = datetime.utcnow()
         db.session.commit()

@@ -63,10 +63,11 @@ Bid: {{ hand.west_bid if hand.west_bid is not none else 'Waiting for bid...' }}
 {% elif game.state.value == 'IN_PROGRESS' %}
 
 {% if trick is none %}
+    {# Bidding ongoing #}
     {% if enable_bidding %}
         <form method="post" action="/game/bid">
             <p>Place a bid from zero (0) through thirteen (13). Nil bonus/penalty is 100 points.</p>
-            <input id="bid" name="bid" type="text" size="3" maxlength="3"><input type="submit" value="Place Bid" name="bid_submit">
+            <input id="bid-input" name="bid" type="text" size="3" maxlength="3"><input type="submit" value="Place Bid" name="bid_submit">
         </form>
     {% else %}
         <p><u>Waiting on other players to bid...</u></p>
