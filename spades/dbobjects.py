@@ -279,7 +279,7 @@ class Hand(db.Model):
     ns_score_after_bags = db.Column(db.Integer)
     ew_score_after_bags = db.Column(db.Integer)
 
-    def get_lastest_trick(self):
+    def get_latest_trick(self):
         """
         :return: The most recent Trick for this Hand, or None if this Hand has no Tricks yet
         """

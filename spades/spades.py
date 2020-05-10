@@ -262,11 +262,11 @@ def game_bid():
     # Validate bid
     if not isinstance(bid, str):
         # Invalid input for bid, but no need to alert user
-        return redirect(url_for('game'))
+        return redirect(url_for('game_home'))
     bid = bid.strip()
     if not BID_REGEX.match(bid):
         flash('You bid must be an integer bid from zero (0) to thirteen (13).')
-        return redirect(url_for('game'))
+        return redirect(url_for('game_home'))
 
     if game is None:
         flash('If you want to join a game, click the Join button.')
@@ -278,10 +278,10 @@ def game_bid():
             hand.place_bid(current_user.user_id, int(bid), game)
         except UserCanNotBidError:
             flash('Bidding is not available at this time for you.')
-            return redirect(url_for('game'))
+            return redirect(url_for('game_home'))
         except BadGameStateError:
             flash('An error occurred while trying to pace your bid. Please try again.')
-            return redirect(url_for('game'))
+            return redirect(url_for('game_home'))
         else:
             flash(f'Your bid of {bid} has been placed.')
-            return redirect(url_for('game'))
+            return redirect(url_for('game_home'))
