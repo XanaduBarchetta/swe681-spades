@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spades - In Game</title>
+</head>
+<body>
+<h1>This game is {{ game.state | translate_game_state }}!</h1>
+
+<h2>NORTH{{ ' (Dealer)' if hand.dealer.value == 'NORTH' else '' }}</h2>
+<p>
+Player: {{ north_playername if north_playername is not none else 'Waiting for player to join...' }}
+<br>
+{% if hand is not none %}
+Bid: {{ hand.north_bid if hand.north_bid is not none else 'Waiting for bid...' }}
+{% endif %}
+</p>
+<br>
+
+<h2>EAST{{ ' (Dealer)' if hand.dealer.value == 'EAST' else '' }}</h2>
+<p>
+Player: {{ east_playername if east_playername is not none else 'Waiting for player to join...' }}
+<br>
+{% if hand is not none %}
+Bid: {{ hand.east_bid if hand.east_bid is not none else 'Waiting for bid...' }}
+{% endif %}
+</p>
+<br>
+
+<h2>SOUTH{{ ' (Dealer)' if hand.dealer.value == 'SOUTH' else '' }}</h2>
+<p>
+Player: {{ south_playername if south_playername is not none else 'Waiting for player to join...' }}
+<br>
+{% if hand is not none %}
+Bid: {{ hand.south_bid if hand.south_bid is not none else 'Waiting for bid...' }}
+{% endif %}
+</p>
+<br>
+
+<h2>WEST{{ ' (Dealer)' if hand.dealer.value == 'WEST' else '' }}</h2>
+<p>
+Player: {{ west_playername if west_playername is not none else 'Waiting for player to join...' }}
+<br>
+{% if hand is not none %}
+Bid: {{ hand.west_bid if hand.west_bid is not none else 'Waiting for bid...' }}
+{% endif %}
+</p>
+<br><br><br>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  <br><br>
+  {% endif %}
+{% endwith %}
+
+{% if game.state.value == 'FILLING' %}
+<p>Currently waiting on other players to join. Refresh the page to check for updates!</p>
+{% elif game.state.value == 'IN_PROGRESS' %}
+
+{% if trick is none %}
+    {% if enable_bidding %}
+        <form method="post" action="/game/bid">
+            <p>Place a bid from zero (0) through thirteen (13). Nil bonus/penalty is 100 points.</p>
+            <input id="bid" name="bid" type="text" size="3" maxlength="3"><input type="submit" value="Place Bid" name="bid_submit">
+        </form>
+    {% else %}
+        <p><u>Waiting on other players to bid...</u></p>
+    {% endif %}
+{% else %}
+
+{% endif %}
+
+<br><br>
+<p>Your direction is <b>{{ player_direction.value }}</b>. Your partner is <b>{{ player_direction | partner_direction }}</b>.</p>
+<p>
+<h3>Your hand:</h3>
+    <div style="font-family: 'Courier New', monospace">
+        {% for suit in cards %}
+            {% for card in cards[suit] %}
+                {{ card.card }}
+            {% endfor %}
+        <br>
+        {% else %}
+        No cards in hand
+        {% endfor %}
+    </div>
+    <p>CARD GUIDE: Cards are displayed with their two-digit value and one-character suit.
+    <br>11 = Jack, 12 = Queen, 13 = King, 14 = Ace<br>S = Spades, H = Hearts, C = Clubs, D = Diamonds</p>
+</p>
+
+
+{% endif %}
+<br>
+<a href="/home">Back to Home</a>
+</body>
+</html>
