@@ -5,44 +5,60 @@
     <title>Spades - In Game</title>
 </head>
 <body>
-<h1>This game is {{ game.state | translate_game_state }}!</h1>
+<h1>{{ current_user.username }}, this game is {{ game.state | translate_game_state }}!</h1>
 
-<h2>NORTH{{ ' (Dealer)' if hand.dealer.value == 'NORTH' else '' }}</h2>
+<h2>NORTH{{ ' (Dealer)' if hand is not none and hand.dealer.value == 'NORTH' else '' }}</h2>
 <p>
 Player: {{ north_playername if north_playername is not none else 'Waiting for player to join...' }}
 <br>
 {% if hand is not none %}
 Bid: {{ hand.north_bid if hand.north_bid is not none else 'Waiting for bid...' }}
+    {% if trick is not none %}
+        <br>Tricks taken this hand: {{ tricks_taken['NORTH'] }}
+        <br>Current card played: {{ trick.north_play if trick.north_play is not none else 'Not yet played' }}
+    {% endif %}
 {% endif %}
 </p>
 <br>
 
-<h2>EAST{{ ' (Dealer)' if hand.dealer.value == 'EAST' else '' }}</h2>
+<h2>EAST{{ ' (Dealer)' if hand is not none and hand.dealer.value == 'EAST' else '' }}</h2>
 <p>
 Player: {{ east_playername if east_playername is not none else 'Waiting for player to join...' }}
 <br>
 {% if hand is not none %}
 Bid: {{ hand.east_bid if hand.east_bid is not none else 'Waiting for bid...' }}
+    {% if trick is not none %}
+        <br>Tricks taken this hand: {{ tricks_taken['EAST'] }}
+        <br>Current card played: {{ trick.east_play if trick.east_play is not none else 'Not yet played' }}
+    {% endif %}
 {% endif %}
 </p>
 <br>
 
-<h2>SOUTH{{ ' (Dealer)' if hand.dealer.value == 'SOUTH' else '' }}</h2>
+<h2>SOUTH{{ ' (Dealer)' if hand is not none and hand.dealer.value == 'SOUTH' else '' }}</h2>
 <p>
 Player: {{ south_playername if south_playername is not none else 'Waiting for player to join...' }}
 <br>
 {% if hand is not none %}
 Bid: {{ hand.south_bid if hand.south_bid is not none else 'Waiting for bid...' }}
+    {% if trick is not none %}
+        <br>Tricks taken this hand: {{ tricks_taken['SOUTH'] }}
+        <br>Current card played: {{ trick.south_play if trick.south_play is not none else 'Not yet played' }}
+    {% endif %}
 {% endif %}
 </p>
 <br>
 
-<h2>WEST{{ ' (Dealer)' if hand.dealer.value == 'WEST' else '' }}</h2>
+<h2>WEST{{ ' (Dealer)' if hand is not none and hand.dealer.value == 'WEST' else '' }}</h2>
 <p>
 Player: {{ west_playername if west_playername is not none else 'Waiting for player to join...' }}
 <br>
 {% if hand is not none %}
 Bid: {{ hand.west_bid if hand.west_bid is not none else 'Waiting for bid...' }}
+    {% if trick is not none %}
+        <br>Tricks taken this hand: {{ tricks_taken['WEST'] }}
+        <br>Current card played: {{ trick.west_play if trick.west_play is not none else 'Not yet played' }}
+    {% endif %}
 {% endif %}
 </p>
 <br><br><br>
@@ -73,11 +89,29 @@ Bid: {{ hand.west_bid if hand.west_bid is not none else 'Waiting for bid...' }}
         <p><u>Waiting on other players to bid...</u></p>
     {% endif %}
 {% else %}
-
+    {# Tricks ongoing/being played #}
+    {% if next_play_direction == player_direction %}
+        {# It's this player's turn to play #}
+        <form method="post" action="/game/play_card">
+            <p>Type a card from your hand and press submit. The card must be typed exactly, including any leading zeros.</p>
+            <input id="card-input" name="card" type="text" size="3" maxlength="3"><input type="submit" value="Play Card" name="card_submit">
+        </form><br>
+        {% if trick.lead_suit is none %}
+            You are leading this trick.
+        {% else %}
+            The lead suit is {{ trick.lead_suit | translate_suit }}
+        {% endif %}
+        <br>
+        {{ 'Spades have been broken.' if hand.spades_broken else 'Spades have not been broken.' }}
+    {% else %}
+        <p><u>Waiting on other players to play a card...</u></p>
+    {% endif %}
 {% endif %}
 
 <br><br>
 <p>Your direction is <b>{{ player_direction.value }}</b>. Your partner is <b>{{ player_direction | partner_direction }}</b>.</p>
+<p>N/S score: {{ ns_score }}<br>
+E/W score: {{ ew_score }}</p>
 <p>
 <h3>Your hand:</h3>
     <div style="font-family: 'Courier New', monospace">

@@ -4,13 +4,16 @@ import logging
 from flask import flash, redirect, url_for, request, render_template
 from flask_login import current_user, LoginManager, login_required, login_user, logout_user
 
-from spades.dbobjects import User, Game, GameStateEnum, DirectionsEnum
-from spades.exceptions import UserAlreadyExistsException, UserCanNotBidError, BadGameStateError
+from spades.dbobjects import User, Game, GameStateEnum, DirectionsEnum, SuitEnum
+from spades.exceptions import UserAlreadyExistsException, UserCanNotBidError, BadGameStateError, SpadesNotBrokenError, \
+    NotFollowingLeadSuitError, CardNotInHandError
 from . import app
 
 USERNAME_REGEX = re.compile(r'^\w+$')
 PASSWORD_REGEX = re.compile(r'^[-=+!@#$%^&*()\w]+$')
-BID_REGEX = re.compile(r'^([0-9]|1[0-3])$')
+BID_REGEX = re.compile(r'^(\d|1[0-3])$')
+CARD_REGEX = re.compile(r'^(0[2-9]|1[0-4])[SHCD]$')
+GAME_ID_REGEX = re.compile(r'^[1-9]\d*$')
 
 logger = logging.getLogger('spades')
 hdlr = logging.FileHandler(app.config['LOGFILE'])
@@ -29,22 +32,20 @@ login_manager.init_app(app)
 
 
 @app.template_filter('translate_game_state')
-def translate_game_state(state: str):
+def translate_game_state(state: GameStateEnum):
     if state == GameStateEnum.IN_PROGRESS:
         return "in progress"
-    if state == GameStateEnum.FILLING:
-        return "filling"
-    if state == GameStateEnum.ABANDONED:
-        return "abandoned"
-    if state == GameStateEnum.COMPLETED:
-        return "completed"
-    if state == GameStateEnum.FORFEITED:
-        return "forfeited"
+    return state.value.lower()
 
 
 @app.template_filter('partner_direction')
 def partner_direction(direction: DirectionsEnum):
     return DirectionsEnum.get_partner_direction(direction).value
+
+
+@app.template_filter('translate_suit')
+def translate_suit(suit: SuitEnum):
+    return SuitEnum.get_suit_word(suit).title()
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -190,8 +191,13 @@ def game_home():
     """
     game = current_user.get_active_game()
     if game is None:
-        flash('If you want to join a game, click the Join button.')
-        return redirect(url_for('home'))
+        game = current_user.get_last_ended_game()
+        if game is None:
+            flash('If you want to join a game, click the Join button.')
+            return redirect(url_for('home'))
+        else:
+            flash('These are the results from your most recent ended game.')
+            return redirect(url_for('game_summary', game_id=game.game_id))
     response_data = {
         'game': game,
         'north_playername': User.get_username_by_id(game.player_north),
@@ -207,6 +213,7 @@ def game_home():
             'diamonds': []
         },
         'trick': None,
+        'tricks_taken': None,
         'enable_bidding': False,
     }
     if game.player_is_direction(current_user.user_id, DirectionsEnum.SOUTH):
@@ -222,18 +229,21 @@ def game_home():
         # Fetch current Hand data
         hand = game.get_latest_hand()
         response_data['hand'] = hand
+        response_data['ns_score'], response_data['ew_score'] = hand.get_score_from_previous_hand()
         cards = hand.get_playable_cards_for_user(current_user.user_id)
         cards.sort(key=lambda x: x.card)
         for suit, letter in [('spades', 'S'), ('hearts', 'H'), ('clubs', 'C'), ('diamonds', 'D')]:
             response_data['cards'][suit] = [card for card in cards if card.card.endswith(letter)]
-        if all([
-            hand.north_bid is not None,
-            hand.south_bid is not None,
-            hand.east_bid is not None,
-            hand.west_bid is not None
-        ]):
+        if None not in [
+            hand.north_bid,
+            hand.south_bid,
+            hand.east_bid,
+            hand.west_bid
+        ]:
             # All bids have been placed. Fetch trick data.
             response_data['trick'] = hand.get_latest_trick()
+            response_data['next_play_direction'] = response_data['trick'].get_next_play_direction()
+            response_data['tricks_taken'] = {key.value: value for key, value in hand.get_total_tricks_taken().items()}
         else:
             # Waiting on at least one bid
             response_data['enable_bidding'] = game.can_user_place_bid(current_user.user_id, hand)
@@ -285,3 +295,94 @@ def game_bid():
         else:
             flash(f'Your bid of {bid} has been placed.')
             return redirect(url_for('game_home'))
+
+
+@app.route('/game/play_card', methods=['POST'])
+@login_required
+def play_card():
+    """
+    Endpoint for playing a card
+    """
+    game = current_user.get_active_game()
+    card = request.form.get('card', '')
+
+    if game is None:
+        flash('If you want to join a game, click the Join button.')
+        return redirect(url_for('home'))
+    else:
+        # Validate card
+        if not isinstance(card, str):
+            # Invalid input for card, but no need to alert user
+            return redirect(url_for('game_home'))
+        card = card.strip()
+        if not CARD_REGEX.match(card):
+            flash('Invalid card format.')
+            return redirect(url_for('game_home'))
+
+        hand = game.get_latest_hand()
+        trick = hand.get_latest_trick(with_for_update=True)
+        # Attempt to play the card
+        try:
+            trick.play_card(current_user.user_id, card, game, hand)
+        except CardNotInHandError:
+            flash('The card \'{0}\' is not in your hand or has already been played.'
+                  ' Please play a card from your hand.'.format(card))
+            return redirect(url_for('game_home'))
+        except SpadesNotBrokenError:
+            flash('Spades have not yet been broken. Please choose a different suit.')
+            return redirect(url_for('game_home'))
+        except NotFollowingLeadSuitError:
+            flash('You must follow the lead suit whenever possible. Please choose a card with the lead suit.')
+            return redirect(url_for('game_home'))
+        except BadGameStateError:
+            flash('An error occurred while trying to play your card. Please try again.')
+            return redirect(url_for('game_home'))
+        else:
+            flash(f'You played {card} successfully.')
+            if trick.winner is not None:
+                flash(f'{trick.winner.value} won the trick.')
+                if trick.trick_number == 13 and game.state == GameStateEnum.IN_PROGRESS:
+                    flash('A new hand has been dealt.')
+                    return redirect(url_for('game_home'))
+                elif game.state == GameStateEnum.COMPLETED:
+                    if game.ns_win:
+                        flash('North/South team won the game.')
+                    else:
+                        flash('East/West team won the game.')
+                    # Redirect to game summary screen
+                    redirect(url_for('game_summary', game_id=game.game_id))
+            return redirect(url_for('game_home'))
+
+
+@app.route('/users', methods=['GET'])
+@login_required
+def user_list():
+    users = User.query.all()
+    return render_template('user_list.html', users=users)
+
+
+@app.route('/game/list', methods=['GET'])
+@login_required
+def game_list():
+    games = Game.get_viewable_games()
+    users = {user.user_id: user.username for user in User.query.all()}
+    return render_template('game_list.html', games=games, users=users)
+
+
+@app.route('/game/summary/<game_id>', methods=['GET'])
+@login_required
+def game_summary(game_id):
+    if not GAME_ID_REGEX.match(game_id):
+        flash('Malformed game_id.')
+        return redirect(url_for('game_list'))
+    game_id = int(game_id)
+    game = Game.get_game_by_id(game_id)
+    if game is None:
+        flash('No such game exists.')
+        return redirect(url_for('game_list'))
+    if game.state not in [GameStateEnum.ABANDONED, GameStateEnum.FORFEITED, GameStateEnum.COMPLETED]:
+        flash('There is no viewable game with that id.')
+        return redirect(url_for('game_list'))
+    hands = game.get_all_hands_and_tricks()
+    users = {user.user_id: user.username for user in User.query.all()}
+    return render_template('game_summary.html', game=game, hands=hands, users=users)
