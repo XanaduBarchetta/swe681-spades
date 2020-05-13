@@ -96,6 +96,7 @@ CREATE TABLE Trick
     hand_number INT NOT NULL,
     trick_number INT NOT NULL,
     lead_player ENUM('NORTH','SOUTH','EAST','WEST') NOT NULL,
+    lead_suit ENUM('S','H','C','D') DEFAULT NULL,
     north_play CHAR(3) DEFAULT NULL,
     south_play CHAR(3) DEFAULT NULL,
     east_play CHAR(3) DEFAULT NULL,

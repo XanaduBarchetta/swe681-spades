@@ -67,7 +67,7 @@ def get_shuffled_deck():
     """
     old_deck = FULL_DECK.copy()
     new_deck = []
-    for i in range(51, 1, -1):
+    for i in range(52, 1, -1):
         new_deck.append(old_deck.pop(secrets.randbelow(i)))
     new_deck.append(old_deck.pop(0))
     return new_deck

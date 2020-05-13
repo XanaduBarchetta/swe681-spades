@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spades - Game Summary</title>
+    <style>
+      table,
+      th,
+      td {
+        padding: 5px;
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+    </style>
+</head>
+<body>
+<h1>Summary for Game {{ game.game_id }}</h1>
+<a href="{{ url_for('home') }}">Return to Home</a><br>
+<a href="{{ url_for('game_list') }}">Return to Game List</a>
+
+  {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flashes">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+<p>
+    Players:<br>
+    North: {{ users[game.player_north] if game.player_north is not none else 'Failed to find player' }}<br>
+    South: {{ users[game.player_south] if game.player_south is not none else 'Failed to find player' }}<br>
+    East: {{ users[game.player_east] if game.player_east is not none else 'Failed to find player' }}<br>
+    West: {{ users[game.player_west] if game.player_west is not none else 'Failed to find player' }}
+</p>
+<p>
+    Final activity time: {{ game.last_activity }}<br>
+    Final state: {{ game.state | translate_game_state }}<br>
+    {% if game.ns_win is not none %}
+        Winner: {{ 'North/South Team' if game.ns_win else 'East/West Team' }}
+    {% endif %}
+</p>
+{% for hand in hands %}
+<h2>Hand {{ hand['hand'].hand_number }}</h2>
+<p>
+Dealer: {{ hand['hand'].dealer.value }}<br>
+North bid: {{ hand['hand'].north_bid if hand['hand'].north_bid is not none else 'No bid placed' }}<br>
+South bid: {{ hand['hand'].south_bid if hand['hand'].south_bid is not none else 'No bid placed' }}<br>
+East bid: {{ hand['hand'].east_bid if hand['hand'].east_bid is not none else 'No bid placed' }}<br>
+West bid: {{ hand['hand'].west_bid if hand['hand'].west_bid is not none else 'No bid placed' }}<br>
+{% if hand['hand'].ns_score_after_bags is not none %}
+North/South score at end of hand: {{ hand['hand'].ns_score_after_bags }}<br>
+East/West score at end of hand: {{ hand['hand'].ew_score_after_bags }}<br>
+{% endif %}
+</p>
+<table>
+    <thead>
+    <tr>
+        <th>Trick #</th>
+        <th>Lead Player</th>
+        <th>North Play</th>
+        <th>East Play</th>
+        <th>South Play</th>
+        <th>West Play</th>
+        <th>Winner</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for trick in hand['tricks'] %}
+    <tr>
+        <td>{{ trick.trick_number }}</td>
+        <td>{{ trick.lead_player.value }}</td>
+        <td>{{ trick.north_play }}</td>
+        <td>{{ trick.east_play }}</td>
+        <td>{{ trick.south_play }}</td>
+        <td>{{ trick.west_play }}</td>
+        <td>{{ trick.winner.value }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endfor %}
+</body>
+</html>

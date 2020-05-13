@@ -19,14 +19,10 @@
   {% else %}
   <p>You are not currently in a game. Click "Join New/Existing Game" to start a new one!</p>
   {% endif %}
-  <form method="get" action="/viewstats">
-    <input type="submit" value="View Win/Loss Statistics" name="viewstats"/>
-  </form>
-  <br>
-  <form method="get" action="/viewgamemoves">
-    <input type="submit" value="View Game Moves History" name="viewgamemoves"/>
-  </form>
-  <br>
+  View win/loss statistics for all users <a href="/users">here</a>.
+  <br><br>
+  View a list of all completed, abandoned, and forfeited games <a href="/game/list">here</a>.
+  <br><br>
   <form method="get" action="/joingame">
     <input type="submit" value="Join New/Existing Game" name="joingame"/>
   </form>
