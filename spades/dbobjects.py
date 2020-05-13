@@ -17,7 +17,7 @@ from .exceptions import UserAlreadyExistsException, InvalidDirectionError, UserC
 from .utils import get_shuffled_deck
 
 logger = logging.getLogger('spades_db')
-hdlr = logging.FileHandler('../spades_db.log')
+hdlr = logging.FileHandler(app.config['LOGFILE'])
 logger.addHandler(hdlr)
 
 # database engine
