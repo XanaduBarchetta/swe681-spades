@@ -7,7 +7,7 @@ from flask_login import current_user, LoginManager, login_required, login_user, 
 from spades.dbobjects import User, Game, GameStateEnum, DirectionsEnum, SuitEnum
 from spades.exceptions import UserAlreadyExistsException, UserCanNotBidError, BadGameStateError, SpadesNotBrokenError, \
     NotFollowingLeadSuitError, CardNotInHandError
-from . import app
+from spades import app
 
 USERNAME_REGEX = re.compile(r'^\w+$')
 PASSWORD_REGEX = re.compile(r'^[-=+!@#$%^&*()\w]+$')
@@ -74,7 +74,7 @@ def login():
         # We don't want to lock out legacy users!
         if not PASSWORD_REGEX.match(password):
             flash("Passwords are limited to letters, numbers, and the following characters: -=+!@#$%^&*()_")
-            security.info("User %s has inputted invalid password which does not meet -=+!@#$%^&*()_", username)
+            security.info("User %s has inputted invalid password which does not meet -=+!@#$%%^&*()_", username)
             failed_validation = True
         if failed_validation:
             security.info("There has been a failed validation.")
@@ -252,10 +252,9 @@ def game_home():
         # Shouldn't arrive at this state. Log it.
         flash('An unknown error occurred. Please try again.')
         logger.error(
-            'Game with id [{game_id}] in bad state while user [{username}] attempted to display game home.'.format(
-                game_id=game.game_id,
-                username=current_user.username
-            )
+            'Game with id [%s] in bad state while user [%s] attempted to display game home.',
+            game.game_id,
+            current_user.username
         )
         return redirect(url_for('home'))
 
