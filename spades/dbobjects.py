@@ -12,8 +12,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from spades import app
-from spades.exceptions import UserAlreadyExistsException, InvalidDirectionError, UserCanNotBidError,\
-    BadGameStateError, CardNotInHandError, SpadesNotBrokenError, NotFollowingLeadSuitError, InvalidSuitError
+from spades.exceptions import UserAlreadyExistsException, InvalidDirectionError, UserCanNotBidError, \
+    BadGameStateError, CardNotInHandError, SpadesNotBrokenError, NotFollowingLeadSuitError, InvalidSuitError, \
+    NotPlayersTurnError
 from spades.utils import get_shuffled_deck
 
 logger = logging.getLogger('spades_db')
@@ -615,10 +616,14 @@ class Trick(db.Model):
         :param game: The Game object for this Trick (for convenience)
         :param hand: The Hand object for this Trick (for convenience)
         :return: None
+        :raise NotPlayersTurnError: if the user attempts to play when it is not their turn
+        :raise CardNotInHandError: if the user tries to play a card not in their hand
         :raise SpadesNotBrokenError: if the user has cards other than spades to play and spades have not yet been broken
         :raise BadGameStateError: if duplicate cards found
         :raise BadGameStateError: if user is expected ot be able to play but play has already been made
         """
+        if not game.player_is_direction(user_id, self.get_next_play_direction()):
+            raise NotPlayersTurnError()
         try:
             # Acquire a lock on the card
             hand_card = db.session.query(HandCard).filter(

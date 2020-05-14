@@ -6,7 +6,7 @@ from flask_login import current_user, LoginManager, login_required, login_user, 
 
 from spades.dbobjects import User, Game, GameStateEnum, DirectionsEnum, SuitEnum
 from spades.exceptions import UserAlreadyExistsException, UserCanNotBidError, BadGameStateError, SpadesNotBrokenError, \
-    NotFollowingLeadSuitError, CardNotInHandError
+    NotFollowingLeadSuitError, CardNotInHandError, NotPlayersTurnError
 from spades import app
 
 USERNAME_REGEX = re.compile(r'^\w+$')
@@ -323,6 +323,9 @@ def play_card():
         # Attempt to play the card
         try:
             trick.play_card(current_user.user_id, card, game, hand)
+        except NotPlayersTurnError:
+            flash('It is not your turn to play a card.')
+            return redirect(url_for('game_home'))
         except CardNotInHandError:
             flash('The card \'{0}\' is not in your hand or has already been played.'
                   ' Please play a card from your hand.'.format(card))

@@ -16,6 +16,12 @@ class InvalidSuitError(Exception):
     """
 
 
+class NotPlayersTurnError(Exception):
+    """
+    Raise when a user attempts to play a card, but it is not their turn to do so
+    """
+
+
 class UserCanNotBidError(Exception):
     """
     Raised when attempting to place a bid for a user who is ineligible for bidding
