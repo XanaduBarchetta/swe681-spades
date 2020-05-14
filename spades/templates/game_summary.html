@@ -35,7 +35,7 @@
     West: {{ users[game.player_west] if game.player_west is not none else 'Failed to find player' }}
 </p>
 <p>
-    Final activity time: {{ game.last_activity }}<br>
+    Final activity time: {{ game.last_activity }} UTC<br>
     Final state: {{ game.state | translate_game_state }}<br>
     {% if game.ns_win is not none %}
         Winner: {{ 'North/South Team' if game.ns_win else 'East/West Team' }}

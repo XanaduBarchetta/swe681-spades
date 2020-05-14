@@ -109,3 +109,68 @@ CREATE TABLE Trick
 );
 -- trick_number works just like hand_number from Hand description
 -- lead_player is 1 clockwise of Hand.dealer for trick_number==1
+
+--
+-- This event manages timing out games due to inactivity
+--
+CREATE EVENT spades_game_timeout
+ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR DO
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE gameid INT;
+    DECLARE pnorth, psouth, peast, pwest INT;
+    DECLARE leaddir ENUM('NORTH','SOUTH','EAST','WEST');
+    DECLARE nplay, splay, eplay, wplay CHAR(3);
+    DECLARE cur1 CURSOR FOR SELECT game_id, player_north, player_south, player_east, player_west
+        FROM Game WHERE state='IN_PROGRESS' AND last_activity + INTERVAL 1 HOUR < CURRENT_TIMESTAMP;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    UPDATE Game SET state='ABANDONED' WHERE state='FILLING' AND last_activity + INTERVAL 1 HOUR < CURRENT_TIMESTAMP;
+
+    OPEN cur1;
+    read_loop: LOOP
+        FETCH cur1 INTO gameid, pnorth, psouth, peast, pwest;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        SELECT lead_player, north_play, south_play, east_play, west_play
+            INTO leaddir, nplay, splay, eplay, wplay
+        FROM Trick
+            WHERE game_id=gameid
+            ORDER BY hand_number DESC, trick_number DESC LIMIT 1;
+        IF nplay IS NULL AND splay IS NULL AND eplay IS NULL AND wplay IS NULL THEN
+            -- Trick leader timed out
+            IF leaddir = 'NORTH' OR leaddir = 'SOUTH' THEN
+                UPDATE Game SET state='FORFEITED', ns_win=0 WHERE game_id=gameid;
+                UPDATE User SET losses=losses+1 WHERE user_id IN (pnorth, psouth);
+                UPDATE User SET wins=wins+1 WHERE user_id IN (peast, pwest);
+            ELSEIF leaddir = 'EAST' OR leaddir = 'WEST' THEN
+                UPDATE Game SET state='FORFEITED', ns_win=1 WHERE game_id=gameid;
+                UPDATE User SET losses=losses+1 WHERE user_id IN (peast, pwest);
+                UPDATE User SET wins=wins+1 WHERE user_id IN (pnorth, psouth);
+            END IF;
+        ELSEIF nplay IS NOT NULL AND eplay IS NULL THEN
+            -- East timed out
+            UPDATE Game SET state='FORFEITED', ns_win=1 WHERE game_id=gameid;
+            UPDATE User SET losses=losses+1 WHERE user_id IN (peast, pwest);
+            UPDATE User SET wins=wins+1 WHERE user_id IN (pnorth, psouth);
+        ELSEIF splay IS NOT NULL AND wplay IS NULL THEN
+            -- West timed out
+            UPDATE Game SET state='FORFEITED', ns_win=1 WHERE game_id=gameid;
+            UPDATE User SET losses=losses+1 WHERE user_id IN (peast, pwest);
+            UPDATE User SET wins=wins+1 WHERE user_id IN (pnorth, psouth);
+        ELSEIF eplay IS NOT NULL AND splay IS NULL THEN
+            -- South timed out
+            UPDATE Game SET state='FORFEITED', ns_win=0 WHERE game_id=gameid;
+            UPDATE User SET losses=losses+1 WHERE user_id IN (pnorth, psouth);
+            UPDATE User SET wins=wins+1 WHERE user_id IN (peast, pwest);
+        ELSEIF wplay IS NOT NULL AND nplay IS NULL THEN
+            -- North timed out
+            UPDATE Game SET state='FORFEITED', ns_win=0 WHERE game_id=gameid;
+            UPDATE User SET losses=losses+1 WHERE user_id IN (pnorth, psouth);
+            UPDATE User SET wins=wins+1 WHERE user_id IN (peast, pwest);
+        END IF;
+    END LOOP;
+
+    CLOSE cur1;
+END;

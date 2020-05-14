@@ -1,9 +1,9 @@
-from typing import Union, List
-
-import bcrypt
 import enum
 import logging
 from datetime import datetime
+from typing import Union, List
+
+import bcrypt
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -11,13 +11,13 @@ from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
-from . import app
-from .exceptions import UserAlreadyExistsException, InvalidDirectionError, UserCanNotBidError, BadGameStateError, \
-    CardNotInHandError, SpadesNotBrokenError, NotFollowingLeadSuitError, InvalidSuitError
-from .utils import get_shuffled_deck
+from spades import app
+from spades.exceptions import UserAlreadyExistsException, InvalidDirectionError, UserCanNotBidError,\
+    BadGameStateError, CardNotInHandError, SpadesNotBrokenError, NotFollowingLeadSuitError, InvalidSuitError
+from spades.utils import get_shuffled_deck
 
 logger = logging.getLogger('spades_db')
-hdlr = logging.FileHandler('../spades_db.log')
+hdlr = logging.FileHandler(app.config['LOGFILE'])
 logger.addHandler(hdlr)
 
 # database engine
@@ -109,7 +109,6 @@ class User(db.Model, UserMixin):
                 return user
             else:
                 # Failed login attempt
-                # TODO: Handle retries here
                 return None
 
     @staticmethod
@@ -794,7 +793,7 @@ class Trick(db.Model):
                         ns_score = ns_score - (ns_bid * 10)
                         hand.ns_bags_at_end = ns_bags
                     hand.ns_score_after_bags = ns_score
-                    
+
                     ew_bid = hand.east_bid + hand.west_bid
                     ew_tricks = tricks_taken[DirectionsEnum.EAST] + tricks_taken[DirectionsEnum.WEST]
                     ew_new_bags = ew_tricks - ew_bid
