@@ -38,7 +38,16 @@ Again with elevated privileges, from the same MySQL interface, set up the databa
 source /path/to/db_setup.sql
 ```
 
-[TODO: include steps for generating secret key for sessions]
+Generate a Secret Key
+===
+Flask requires a secret key for your application.
+It should be unique and not visible to any non-administrators.
+To generate a key, open Python interpreter REPL and execute the following commands:
+```python
+import os
+print(os.urandom(16))
+```
+Paste the result binary string into the SECRET_KEY variable of your local config file.
 
 Running the Game
 ===
