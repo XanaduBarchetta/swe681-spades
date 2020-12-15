@@ -62,3 +62,5 @@ A Windows PowerShell script has been included for convenience. You may execute i
 Playing the Game
 ===
 Visit `https://localhost:5000` in your browser.
+
+Run Static Analysis Tool: `pylint --load-plugins pylint_flask spades`
